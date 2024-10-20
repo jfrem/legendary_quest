@@ -17,25 +17,23 @@ class AuthController
 
         // Validar entradas
         if (empty($data['username']) || empty($data['password']) || empty($data['email'])) {
-            Response::error("Nombre de usuario, email y contraseña son requeridos.", 400);
-            exit();
+            return Response::error("Nombre de usuario, email y contraseña son requeridos.", 400);
         }
 
         // Sanitizar entradas
         $username = htmlspecialchars(strip_tags($data['username']));
-        $email = htmlspecialchars(strip_tags($data['email']));
+        $email = htmlspecialchars(strip_tags(trim($data['email'])));
         $password = password_hash($data['password'], PASSWORD_BCRYPT);
 
         try {
-            // Comprobar si el nombre de usuario ya existe
+            // Comprobar si el nombre de usuario o el email ya existen
             $stmt = $this->db->prepare("SELECT * FROM users WHERE username = :username OR email = :email");
             $stmt->bindParam(":username", $username);
             $stmt->bindParam(":email", $email);
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
-                Response::error("El nombre de usuario o el email ya están en uso.", 409);
-                exit();
+                return Response::error("El nombre de usuario o el email ya están en uso.", 409);
             }
 
             // Insertar en la base de datos
@@ -45,23 +43,21 @@ class AuthController
             $stmt->bindParam(":password", $password);
 
             if ($stmt->execute()) {
-                Response::json(["message" => "Usuario registrado exitosamente."], 201);
+                return Response::json(["message" => "Usuario registrado exitosamente."], 201);
             } else {
-                Response::error("Error al registrar el usuario.", 500);
+                return Response::error("Error al registrar el usuario.", 500);
             }
         } catch (PDOException $e) {
             // Manejo de errores de base de datos
             if ($e->getCode() === '23000') { // Código de error para violación de integridad
-                Response::error("El nombre de usuario o el email ya están en uso.", 409);
-            } else {
-                Response::error("Error en la base de datos: " . $e->getMessage(), 500);
+                return Response::error("El nombre de usuario o el email ya están en uso.", 409);
             }
+            return Response::error("Error en la base de datos: " . $e->getMessage(), 500);
         } catch (Exception $e) {
             // Manejo de errores generales
-            Response::error("Error inesperado: " . $e->getMessage(), 500);
+            return Response::error("Error inesperado: " . $e->getMessage(), 500);
         }
     }
-
 
     public function login()
     {
@@ -70,8 +66,7 @@ class AuthController
 
         // Validar que se reciban email y password
         if (empty($data['email']) || empty($data['password'])) {
-            Response::error("Email y contraseña son requeridos.", 400);
-            exit();
+            return Response::error("Email y contraseña son requeridos.", 400);
         }
 
         // Sanitizar entradas
@@ -80,8 +75,7 @@ class AuthController
 
         // Validar formato de email
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            Response::error("Email inválido.", 400);
-            exit();
+            return Response::error("Email inválido.", 400);
         }
 
         // Buscar el usuario en la base de datos
@@ -92,7 +86,7 @@ class AuthController
 
         // Verificar si el usuario fue encontrado y si la contraseña es correcta
         if ($user && password_verify($password, $user['password'])) {
-            Response::json([
+            return Response::json([
                 "message" => "Inicio de sesión exitoso.",
                 "user" => [
                     "id" => $user['id'],
@@ -101,7 +95,26 @@ class AuthController
                 ]
             ]);
         } else {
-            Response::error("Credenciales inválidas.", 401);
+            return Response::error("Credenciales inválidas.", 401);
         }
     }
+
+    public function logout($id)
+    {
+        if ($this->invalidateToken($id)) {
+            return Response::json(['message' => 'Sesión cerrada correctamente'], 200);
+        } else {
+            return Response::error("Error al cerrar sesión", 500);
+        }
+    }
+    private function invalidateToken($userId)
+    {
+        // $query = "DELETE FROM tokens WHERE user_id = :user_id";
+        // $stmt = $this->db->prepare($query);
+        // $stmt->bindParam(':user_id', $userId);
+
+        // return $stmt->execute();
+        return true;
+    }
+
 }

@@ -1,7 +1,7 @@
-## Crear Tabla 
+## Crear Base de Datos MySQL
 CREATE DATABASE legendary_quest;
 
-## Crear Tablas MySQL
+## Crear Tablas 
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) NOT NULL UNIQUE,

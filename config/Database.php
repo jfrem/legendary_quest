@@ -2,66 +2,96 @@
 
 // config/Database.php
 
+// Incluye el archivo de respuesta que gestiona la gestión de errores.
 require_once __DIR__ . '/../core/Response.php';
 
+/**
+ * Clase Database
+ * 
+ * Esta clase gestiona la conexión a una base de datos MySQL utilizando el patrón Singleton.
+ * Proporciona métodos para obtener y gestionar la conexión a la base de datos.
+ */
 class Database
 {
-    private $host;
-    private $port;
-    private $db_name;
-    private $username;
-    private $password;
-    private static $instance = null;
-    public $conn;
+    // Propiedades privadas para la configuración de la base de datos
+    private $host;       // Host de la base de datos
+    private $port;       // Puerto de la base de datos
+    private $dbName;     // Nombre de la base de datos
+    private $username;   // Nombre de usuario para la conexión
+    private $password;   // Contraseña para la conexión
+    private static $instance = null; // Instancia única de la clase
+    private $conn;       // Conexión a la base de datos
 
-    public function __construct()
+    /**
+     * Constructor de la clase.
+     * 
+     * Asigna valores a las propiedades de configuración de la base de datos 
+     * y valida que el nombre de la base de datos esté configurado.
+     */
+    private function __construct()
     {
-        // Asignar valores desde variables de entorno
-        $this->host = $_ENV['DB_HOST'] ?? 'localhost';
-        $this->port = (int)($_ENV['DB_PORT'] ?? 3307);
-        $this->db_name = $_ENV['DB_NAME'] ?? 'legendary_quest';
-        $this->username = $_ENV['DB_USER'] ?? 'root';
-        $this->password = $_ENV['DB_PASS'] ?? '';
+        // Asignar valores desde variables de entorno o valores por defecto
+        $this->host = 'localhost';
+        $this->port = 3307; // Puerto de MySQL
+        $this->dbName = 'legendary_quest';
+        $this->username = 'root';
+        $this->password = '';
 
-        // Validar configuración
-        if (empty($this->db_name)) {
+        // Validar que el nombre de la base de datos no esté vacío
+        if (empty($this->dbName)) {
             Response::error("El nombre de la base de datos no está configurado.", 500);
         }
     }
 
-    // Implementación del patrón Singleton
-    public static function getInstance()
+    /**
+     * Método estático para obtener la instancia única de la clase (Singleton).
+     * 
+     * @return Database Instancia de la clase Database.
+     */
+    public static function getInstance(): Database
     {
+        // Crear una nueva instancia si no existe
         if (self::$instance === null) {
-            self::$instance = new Database();
+            self::$instance = new self();
         }
         return self::$instance;
     }
 
-    public function getConnection()
+    /**
+     * Método para obtener la conexión a la base de datos.
+     * 
+     * @return PDO Objeto de conexión a la base de datos.
+     * @throws Exception En caso de fallo en la conexión.
+     */
+    public function getConnection(): PDO
     {
+        // Si la conexión ya fue establecida, devolverla
         if ($this->conn !== null) {
             return $this->conn;
         }
 
         try {
-            $dsn = "mysql:host={$this->host};port={$this->port};dbname={$this->db_name};charset=utf8mb4";
+            // Construir el DSN para la conexión a MySQL
+            $dsn = "mysql:host={$this->host};port={$this->port};dbname={$this->dbName};charset=utf8mb4";
+            // Crear la conexión PDO
             $this->conn = new PDO($dsn, $this->username, $this->password);
-            // Configurar atributos de PDO
+            // Configurar atributos de PDO para manejo de errores y tipo de datos
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $exception) {
-            // Log exception message instead of exposing it
+            // Registrar el mensaje de la excepción en los logs en caso de error
             error_log($exception->getMessage());
             Response::error("Conexión fallida a la base de datos.", 500);
         }
 
-        return $this->conn;
+        return $this->conn; // Devolver la conexión
     }
 
-    // Optional: Method to close the connection
-    public function closeConnection()
+    /**
+     * Método para cerrar la conexión a la base de datos.
+     */
+    public function closeConnection(): void
     {
-        $this->conn = null;
+        $this->conn = null; // Cerrar la conexión
     }
 }

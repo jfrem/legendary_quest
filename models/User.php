@@ -3,15 +3,27 @@
 
 class User
 {
-    private $conn;
-    private $table_name = "users";
+    private $conn; // Conexión a la base de datos
+    private $table_name = "users"; // Nombre de la tabla
 
+    /**
+     * Constructor de la clase User.
+     *
+     * @param PDO $db Conexión a la base de datos.
+     */
     public function __construct($db)
     {
         $this->conn = $db;
     }
 
-    // Registrar un nuevo usuario
+    /**
+     * Registra un nuevo usuario en la base de datos.
+     *
+     * @param string $username Nombre de usuario.
+     * @param string $email Correo electrónico.
+     * @param string $password Contraseña en texto plano.
+     * @return bool Verdadero si el registro fue exitoso, falso en caso contrario.
+     */
     public function register($username, $email, $password)
     {
         $query = "INSERT INTO " . $this->table_name . " (username, email, password) VALUES (:username, :email, :password)";
@@ -22,41 +34,59 @@ class User
         $stmt->bindParam(":email", filter_var($email, FILTER_SANITIZE_EMAIL));
         $stmt->bindParam(":password", password_hash($password, PASSWORD_BCRYPT));
 
-        if ($stmt->execute()) {
-            return true;
-        }
-        return false;
+        return $stmt->execute(); // Retorna verdadero si la ejecución fue exitosa
     }
 
-    // Iniciar sesión
+    /**
+     * Inicia sesión y obtiene los datos del usuario por su correo electrónico.
+     *
+     * @param string $email Correo electrónico del usuario.
+     * @return array|false Datos del usuario si se encuentra, falso en caso contrario.
+     */
     public function login($email)
     {
         $query = "SELECT * FROM " . $this->table_name . " WHERE email = :email LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":email", filter_var($email, FILTER_SANITIZE_EMAIL));
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Retorna los datos del usuario
     }
 
-    // Obtener todos los usuarios
-    public function getAllUser()
+    /**
+     * Obtiene todos los usuarios de la base de datos.
+     *
+     * @return array Lista de usuarios.
+     */
+    public function getAllUsers()
     {
         $query = "SELECT * FROM " . $this->table_name;
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna un arreglo con todos los usuarios
     }
-    // Obtener usuario por ID
+
+    /**
+     * Obtiene un usuario por su ID.
+     *
+     * @param int $id ID del usuario.
+     * @return array|false Datos del usuario si se encuentra, falso en caso contrario.
+     */
     public function getUserById($id)
     {
         $query = "SELECT id, username, email, created_at FROM " . $this->table_name . " WHERE id = :id LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch(PDO::FETCH_ASSOC); // Retorna los datos del usuario
     }
 
-    // Actualizar usuario
+    /**
+     * Actualiza los datos de un usuario.
+     *
+     * @param int $id ID del usuario a actualizar.
+     * @param array $data Datos a actualizar (username, email, password).
+     * @return bool Verdadero si la actualización fue exitosa, falso en caso contrario.
+     */
     public function updateUser($id, $data)
     {
         $fields = [];
@@ -78,7 +108,7 @@ class User
         }
 
         if (empty($fields)) {
-            return false;
+            return false; // No se han proporcionado datos para actualizar
         }
 
         $query = "UPDATE " . $this->table_name . " SET " . implode(", ", $fields) . " WHERE id = :id";
@@ -88,24 +118,36 @@ class User
             $stmt->bindParam($key, $val);
         }
 
-        return $stmt->execute();
+        return $stmt->execute(); // Retorna verdadero si la actualización fue exitosa
     }
 
-    // Eliminar usuario
+    /**
+     * Elimina un usuario de la base de datos.
+     *
+     * @param int $id ID del usuario a eliminar.
+     * @return bool Verdadero si la eliminación fue exitosa, falso en caso contrario.
+     */
     public function deleteUser($id)
     {
         $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
-        return $stmt->execute();
+        return $stmt->execute(); // Retorna verdadero si la eliminación fue exitosa
     }
 
-    // Verificar existencia de usuario por username o email
+    /**
+     * Verifica la existencia de un usuario por nombre de usuario o correo electrónico.
+     *
+     * @param string $username Nombre de usuario.
+     * @param string $email Correo electrónico.
+     * @param int|null $excludeId ID del usuario a excluir de la búsqueda (para actualizaciones).
+     * @return bool Verdadero si existe un usuario con esos datos, falso en caso contrario.
+     */
     public function exists($username, $email, $excludeId = null)
     {
         $query = "SELECT id FROM " . $this->table_name . " WHERE (username = :username OR email = :email)";
         if ($excludeId !== null) {
-            $query .= " AND id != :id";
+            $query .= " AND id != :id"; // Excluir el usuario actual si se proporciona el ID
         }
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":username", $username);
@@ -114,6 +156,6 @@ class User
             $stmt->bindParam(":id", $excludeId, PDO::PARAM_INT);
         }
         $stmt->execute();
-        return $stmt->rowCount() > 0;
+        return $stmt->rowCount() > 0; // Retorna verdadero si se encontró al menos un usuario
     }
 }
