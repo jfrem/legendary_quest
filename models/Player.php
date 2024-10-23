@@ -10,4 +10,8 @@ class Player
     {
         $this->conn = $db;
     }
+
+    public function getPlayer(){
+        
+    }
 }
